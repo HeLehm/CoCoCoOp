@@ -8,7 +8,7 @@ __pycache__/
 
 ignore_dir/
 data/*
-*/data/*
+src/datasets/data/*
 
 #mac stuff 
 .DS_Store
