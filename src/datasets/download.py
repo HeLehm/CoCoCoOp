@@ -9,8 +9,8 @@ base_data_dir = data_dir_path()
 
 # imagenet like this: https://github.com/openai/CLIP/blob/main/notebooks/Prompt_Engineering_for_ImageNet.ipynb
 
-datasets_download_config = [
-    {
+datasets_download_config = {
+    'Caltech101' : {
         'name' : 'Caltech101',
         'urls' : {
                 'https://data.caltech.edu/records/mzrjq-6wc02/files/caltech-101.zip': None,
@@ -20,7 +20,7 @@ datasets_download_config = [
             ('caltech-101/101_ObjectCategories', 'images'),
         ]
     },
-    {
+    'OxfordPets':{
         'name' : 'OxfordPets',
         'urls' : {
             'https://www.robots.ox.ac.uk/~vgg/data/pets/data/images.tar.gz' : None,
@@ -30,7 +30,7 @@ datasets_download_config = [
             ('images', 'images'),
         ]
     },
-    {
+    'StanfordCars' : {
         'name' : 'StanfordCars',
         'urls' : {
             'http://ai.stanford.edu/~jkrause/car196/cars_train.tgz' : None,
@@ -42,7 +42,7 @@ datasets_download_config = [
             ('cars_train', 'images/train'),
         ]
     },
-    {
+    'Flowers102' : {
         'name': 'Flowers102',
         'urls': {
             'https://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz' : None,
@@ -52,7 +52,7 @@ datasets_download_config = [
             ('jpg', 'images'),
         ]
     },
-    {
+    'Food101' : {
         'name': 'Food101',
         'urls': {
             'http://data.vision.ee.ethz.ch/cvl/food-101.tar.gz' : None,
@@ -62,7 +62,7 @@ datasets_download_config = [
             ('images', 'images'),
         ]
     },
-    {
+    'SUN397' : {
         'name' : 'SUN397',
         'urls' : {
             'http://vision.princeton.edu/projects/2010/SUN/SUN397.tar.gz': None,
@@ -72,7 +72,7 @@ datasets_download_config = [
             ('SUN397', 'images'),
         ]
     },
-    {
+    'EuroSAT' : {
         'name': 'EuroSAT',
         'urls': {
             'http://madm.dfki.de/files/sentinel/EuroSAT.zip' : None,
@@ -82,7 +82,7 @@ datasets_download_config = [
             ('2750', 'images'),
         ]
     },
-    {
+    'UCF101' :{
         'name' : 'UCF101',
         'urls' : {
             'https://drive.google.com/file/d/10Jqome3vtUA2keJkNanAiFpgbyC9Hc2O/view' : None,
@@ -92,7 +92,7 @@ datasets_download_config = [
             ('UCF-101-midframes', 'images'),
         ]
     }
-]
+}
 # Missing : DTD, FGVCAircraft, Imagenet
 
 
@@ -165,4 +165,4 @@ def download_dataset(dataset_config, remove_finished: bool = False):
 
 def download_datasets(remove_finished: bool = False):
     for dataset in datasets_download_config:
-        download_dataset(dataset, remove_finished=remove_finished)
+        download_dataset(datasets_download_config[dataset], remove_finished=remove_finished)
