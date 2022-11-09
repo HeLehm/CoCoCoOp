@@ -1,10 +1,11 @@
 import json
 import pathlib
 from typing import Tuple, Any
-
+import random
 import PIL
 
 from torchvision.datasets.vision import VisionDataset
+import torch
 
 from .download import download_dataset, datasets_download_config
 from .constants import data_dir_path
@@ -15,17 +16,15 @@ class _BaseDataSet(VisionDataset):
         self,
         data_dir: str = data_dir_path(),
         split='train',
+        shuffle=True,
         download=False,
         transform=None,
         target_transform=None
     ) -> None:
 
-        
         self.name = self.__class__.__name__
 
         self.root = pathlib.Path(data_dir).joinpath(self.name)
-
-        
 
         if split not in ('train', 'test', 'val'):
             raise ValueError(f'Invalid split {split}')
@@ -37,17 +36,39 @@ class _BaseDataSet(VisionDataset):
             raise RuntimeError("Dataset not found. You can use download=True to download it")
 
         annotation_file = self.root.joinpath('annotations.json')
-        self.annotations = self.load_annotations(annotation_file, split)
+        self.annotations = self.load_annotations(annotation_file, split, shuffle=shuffle)
         self.split = split
+
+       #TODO: class to idx mapping
 
         super().__init__(self.root, transform=transform, target_transform=target_transform)
 
-        
+    def get_class_names(self):
+        return self.classes
 
-    def load_annotations(self, annotations_file, split):
+    def filter_classes(self, class_names):
+        """keep only the classes in class_names"""
+        self.annotations = [anno for anno in self.annotations if anno[2] in class_names]
+
+    def load_annotations(self, annotations_file, split, shuffle=True):
         with open(annotations_file, 'r') as f:
             annotations = json.load(f)[split]
+        
+        classes = {}
+        for anno in annotations:
+            classes[anno[1]] = anno[2]
+        for i in classes:
+            if i > len(classes):
+                raise ValueError(f'[{self.__class__.__name__}] class numbers must be consecutive')
+        self.classes = sorted(classes.values(), key=lambda x: x[0])
+        self.class_to_idx = {c: i for i, c in enumerate(self.classes)}
+        
+        if shuffle:
+            random.shuffle(annotations)
         return annotations
+
+    def one_hot_encode_labels(self):
+        self.target_transform = lambda x: torch.nn.functional.one_hot(torch.tensor(x), len(self.get_class_names()))
 
     def download(self):
         if self._check_exists():
@@ -66,10 +87,10 @@ class _BaseDataSet(VisionDataset):
 
     def __getitem__(self, idx) -> Tuple[Any, Any]:
         anno_data = self.annotations[idx] # filename, number label, text label
+        label = anno_data[1] #class number label
+        #label = anno_data[2] # is textlabel
 
-        label = anno_data[2] # is textlabel
-
-        image_file = self.root.joinpath('images' ,anno_data[0])
+        image_file = self.root.joinpath('images', anno_data[0])
         image = PIL.Image.open(image_file).convert("RGB")
 
         if self.transform:
