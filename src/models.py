@@ -253,16 +253,16 @@ class CustomCLIP(nn.Module):
         #self.logit_scale = clip_model.logit_scale
         self.dtype = clip_model.dtype
 
-    def forward(self, image_features, label=None):
-        return self._forward(image_features, label, self.prompt_learner.forward)
+    def forward(self, image_features, label=None,return_stats = False):
+        return self._forward(image_features, label, self.prompt_learner.forward, return_stats = return_stats)
 
-    def forward_meta_only(self, image_features, label=None):
-        return self._forward(image_features, label, self.prompt_learner.forward_meta_only)
+    def forward_meta_only(self, image_features, label=None, return_stats = False):
+        return self._forward(image_features, label, self.prompt_learner.forward_meta_only, return_stats=return_stats)
 
-    def forward_scaling_only(self, image_features, label=None):
+    def forward_scaling_only(self, image_features, label=None, return_stats = False):
         scales = self.prompt_learner.forward_scaling_only(image_features)
 
-        if self.prompt_learner.training:
+        if self.prompt_learner.training or return_stats:
             scales = scales.squeeze(1)
             loss = F.binary_cross_entropy(scales, label)
             stats = performance_metrics(scales, label, one_hot=False)
@@ -277,7 +277,7 @@ class CustomCLIP(nn.Module):
             image_features = image_features / image_features.norm(dim=-1, keepdim=True)
             return image_features
 
-    def _forward(self, image_features, label, prompt_call):
+    def _forward(self, image_features, label, prompt_call, return_stats = False):
         tokenized_prompts = self.tokenized_prompts
        # logit_scale = self.logit_scale.exp()
 
@@ -291,7 +291,7 @@ class CustomCLIP(nn.Module):
             logits.append(l_i)
         logits = torch.stack(logits) # (batch, n_cls)
         
-        if self.prompt_learner.training:
+        if self.prompt_learner.training or return_stats:
             stats = performance_metrics(logits, label, one_hot=True)
             loss = F.cross_entropy(logits, label)
             stats['loss'] = loss.item()
@@ -432,11 +432,13 @@ class CoCoCoOp():
         stats_avg = {}
         for batch in tqdm(ds, desc="Testing"):
             image_features, label = self.parse_train_batch(batch=batch)
-            logits = self.model.forward(image_features, label)
-            
-            stats = performance_metrics(logits, label, one_hot=True)
-            loss = F.cross_entropy(logits, label)
-            stats['loss'] = loss
+            _, stats = self.model.forward(image_features, label, return_stats=True)
+            _, m_stats = self.model.forward_meta_only(image_features, label, return_stats=True)
+            _, s_stats = self.model.forward_scaling_only(image_features, label, return_stats=True)
+
+            m_stats = {f"meta_{k}": v for k, v in m_stats.items()}
+            s_stats = {f"scale_{k}": v for k, v in s_stats.items()}
+            stats = {**stats, **m_stats, **s_stats}
 
             for k, v in stats.items():
                 if k not in stats_avg:
