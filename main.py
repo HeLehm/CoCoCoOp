@@ -1,13 +1,15 @@
 from torchvision.transforms import ToTensor
 
 from src.models import CoCoCoOp, CachedTextEmbedder
-from src.datasets import Flowers102, DatasetSampler
+from src.datasets import Flowers102, DatasetSampler, StanfordCars, Caltech101
 from src.utils import avg_performance_metrics
 import wandb
 from tqdm import tqdm
 
 ds_to_class = {
     'Flowers102': Flowers102,
+    'StanfordCars' : StanfordCars,
+    'Caltech101': Caltech101,
 }
 
 def run_with_config(config):
@@ -24,7 +26,7 @@ def run_with_config(config):
 
 
         model = CoCoCoOp() # TODO add cnfig
-        model.build_model(ds.get_class_names(), clip_model_name=config.clip_backbone)
+        model.build_model(ds.get_class_names(), clip_model_name=config.clip_backbone, ctx_init=config.ctx_init)
         model.start_training()
 
         ds.transform = model.img_to_features
@@ -33,35 +35,33 @@ def run_with_config(config):
         wandb.watch(model.model.prompt_learner)
 
         for epoch in range(config.epochs):
-            print(f'start Epoch {epoch}')
             model.model.train()
-
             stats = []
-
             for batch in tqdm(t_sampler, desc=f"Training epoch {epoch}"):
                 batch_stats = model.forward_backward(batch)
                 stats.append(batch_stats)
             
             stats = avg_performance_metrics(stats)
 
-            stats = {f'train{epoch}/{k}': v for k, v in stats.items()}
+            stats = {f'train/{k}': v for k, v in stats.items()}
             wandb.log(stats)
 
             print(f'Epoch {epoch} train stats: {stats}')
 
             val_stats = model.test(v_sampler)
-            val_stats = {f'val{epoch}/{k}': v for k, v in val_stats.items()}
+            val_stats = {f'val/{k}': v for k, v in val_stats.items()}
             wandb.log(val_stats)
 
 
 this_config = {
-    'Training_ds': 'Flowers102',
+    'Training_ds': 'Caltech101',
     'per_class': 1,
     'batch_size': 1,
     'epochs': 10,
-    'lr': 1e-3, # TODO
+    'lr': 1e-3, # TODOs
     'optimizer': 'Adam', # TODO
-    'clip_backbone': 'ViT-B/16'
+    'clip_backbone': 'ViT-B/16',
+    'ctx_init': 'a photo of a',
 }
 
 if __name__ == '__main__':

@@ -1,5 +1,4 @@
 from collections import OrderedDict
-import math
 
 import torch
 import torch.nn as nn
@@ -7,6 +6,8 @@ from torch.nn import functional as F
 from torch.cuda.amp import GradScaler, autocast
 
 from .Submodules.CLIP.clip import clip 
+
+from tqdm import tqdm
 
 from .utils import performance_metrics
 
@@ -114,6 +115,7 @@ class MetaAndScalingNet(nn.Module):
         scaling_factor = self.scaling_net(vis_embedding) # (batch, 1)
         # scale the meta embedding
         return (meta_embedding.transpose(0, 1) * scaling_factor.squeeze()).transpose(0, 1)
+
 
 
 class PromptLearner(nn.Module):
@@ -263,14 +265,17 @@ class CustomCLIP(nn.Module):
         if self.prompt_learner.training:
             scales = scales.squeeze(1)
             loss = F.binary_cross_entropy(scales, label)
-            return loss
+            stats = performance_metrics(scales, label, one_hot=False)
+            stats['loss'] = loss.item()
+            return loss, stats
 
         return scales
 
     def image_features(self, image):
-        image_features = self.image_encoder(image.type(self.dtype))
-        image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-        return image_features
+        with torch.no_grad():
+            image_features = self.image_encoder(image.type(self.dtype))
+            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+            return image_features
 
     def _forward(self, image_features, label, prompt_call):
         tokenized_prompts = self.tokenized_prompts
@@ -287,7 +292,10 @@ class CustomCLIP(nn.Module):
         logits = torch.stack(logits) # (batch, n_cls)
         
         if self.prompt_learner.training:
-            return F.cross_entropy(logits, label), performance_metrics(logits, label)
+            stats = performance_metrics(logits, label, one_hot=True)
+            loss = F.cross_entropy(logits, label)
+            stats['loss'] = loss.item()
+            return loss,stats
         
         return logits
 
@@ -374,17 +382,18 @@ class CoCoCoOp():
         image_features, label = self.parse_train_batch(batch=batch) # image: (batch, 3, 224, 224), label: (batch) (on device)
         
         s_img_features, s_labels = self.create_scaling_batch(image_features) # (batch, 512)
-        s_loss = self.model.forward_scaling_only(s_img_features, s_labels)
+        s_loss, s_stats = self.model.forward_scaling_only(s_img_features, s_labels)
         s_loss.backward()
         self.scale_optim.step()
 
-        m_loss, stats = self.model.forward_meta_only(image_features, label)
+        m_loss, m_stats = self.model.forward_meta_only(image_features, label)
         m_loss.backward()
         self.meta_optim.step()
 
-        stats['scale_loss'] = s_loss.item()
-        stats['meta_loss'] = m_loss.item()
-
+        m_stats = {f"meta_{k}": v for k, v in m_stats.items()}
+        s_stats = {f"scale_{k}": v for k, v in s_stats.items()}
+        stats = {**m_stats, **s_stats}
+        
         return stats
 
 
@@ -412,7 +421,7 @@ class CoCoCoOp():
         return img, label
 
     def test(self, ds):
-        from tqdm import tqdm
+        
         self.model.prompt_learner.eval()
         self.model.prompt_learner.meta_scaling_net.eval()
         self.model.prompt_learner.meta_scaling_net.scaling_net.eval()
@@ -427,6 +436,7 @@ class CoCoCoOp():
             image_features, label = self.parse_train_batch(batch=batch)
             logits = self.model.forward(image_features, label)
             stats = performance_metrics(logits, label)
+
             for k, v in stats.items():
                 if k not in stats_avg:
                     stats_avg[k] = []

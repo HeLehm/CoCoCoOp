@@ -65,7 +65,9 @@ class _BaseDataSet(VisionDataset):
         for i in classes:
             if i > len(classes):
                 raise ValueError(f'[{self.__class__.__name__}] class numbers must be consecutive')
-        self.classes = sorted(classes.values(), key=lambda x: x[0])
+        #dict to list where key is index
+        self.classes = [classes[i] for i in range(len(classes))]
+
         self.class_to_idx = {c: i for i, c in enumerate(self.classes)}
         
         if shuffle:
