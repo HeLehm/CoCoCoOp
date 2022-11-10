@@ -320,7 +320,7 @@ class CoCoCoOp():
         
 
         print(f"Loading CLIP model (backbone {clip_model_name})")
-        clip_model, self.clip_img_preprocess = load_clip(clip_model_name, DEVICE)
+        clip_model, self.clip_img_preprocess = load_clip(clip_model_name)
 
         if prec == "fp32" or prec == "amp":
             clip_model = clip_model.float()
