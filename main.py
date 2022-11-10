@@ -16,7 +16,7 @@ def run_with_config(config):
     with wandb.init(project='CoCoCoOp', config=config):
         config = wandb.config
 
-        ds = ds_to_class[config.Training_ds](split='train', cache_transformed_images=True)
+        ds = ds_to_class[config.Training_ds](split='train', cache_transformed_images=True, download=True)
         ds.one_hot_encode_labels()
         t_sampler = DatasetSampler(ds, config.batch_size, config.per_class)
 
