@@ -406,10 +406,9 @@ class CoCoCoOp():
 
 
     def create_scaling_batch(self, real_img_features):
-        fake_imgs = self.fake_img_emb_gen(len(real_img_features), self.model.prompt_learner.n_ctx)
+        fake_imgs = self.fake_img_emb_gen(len(real_img_features), self.model.prompt_learner.n_ctx).to(DEVICE)
         images = torch.cat([real_img_features, fake_imgs], dim=0)
         labels = torch.cat([torch.ones(len(real_img_features)), torch.zeros(len(fake_imgs))], dim=0)
-        images = images.to(DEVICE)
         labels = labels.to(DEVICE)
         return images, labels
     
