@@ -14,26 +14,26 @@ from .utils import performance_metrics
 from typing import List
 import random
 
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 """
 Code slightly altered from CoCoOp START
 """
-def load_clip(backbone_name, device):
-    model, preprocess = clip.load(backbone_name, device=device)
+def load_clip(backbone_name):
+    model, preprocess = clip.load(backbone_name, device=DEVICE)
     return model, preprocess
 
 
 
 class CachedTextEmbedder():
-    def __init__(self, clip_model, device):
-        self.device = device
+    def __init__(self, clip_model):
         self.model = clip_model
         self.cache = {}
 
     def __call__(self, text, cache=True):
         if text not in self.cache:
             with torch.no_grad():
-                tok = clip.tokenize(text).to(self.device)
+                tok = clip.tokenize(text).to(DEVICE)
                 if cache:
                     self.cache[text] = self.model.encode_text(tok)[0].cpu()
                 else:
@@ -317,10 +317,10 @@ class CoCoCoOp():
         prec = "fp32",
     ):
 
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
 
         print(f"Loading CLIP model (backbone {clip_model_name})")
-        clip_model, self.clip_img_preprocess = load_clip(clip_model_name, self.device)
+        clip_model, self.clip_img_preprocess = load_clip(clip_model_name, DEVICE)
 
         if prec == "fp32" or prec == "amp":
             clip_model = clip_model.float()
@@ -350,7 +350,7 @@ class CoCoCoOp():
 
         # TODO: make it possible to load model here
 
-        self.model.to(self.device)
+        self.model.to(DEVICE)
 
         # Note that multi-gpu training could be slow because CLIP's size is
         # big, which slows down the copy operation in DataParallel
@@ -364,7 +364,7 @@ class CoCoCoOp():
         img: PIL image
         NOTE: single image only!
         """
-        img = self.clip_img_preprocess(img).unsqueeze(0).to(self.device)
+        img = self.clip_img_preprocess(img).unsqueeze(0).to(DEVICE)
         img_features = self.model.image_features(img)
         return img_features[0]
 
@@ -393,15 +393,14 @@ class CoCoCoOp():
         m_stats = {f"meta_{k}": v for k, v in m_stats.items()}
         s_stats = {f"scale_{k}": v for k, v in s_stats.items()}
         stats = {**m_stats, **s_stats}
-        
+
         return stats
 
 
     def create_cached_text_embedder(self):
         if self.cached_text_embedder is None:
             self.cached_text_embedder = CachedTextEmbedder(
-                clip_model=self.model.clip_model,
-                device=self.device,
+                clip_model=self.model.clip_model
             )
         return self.cached_text_embedder
 
@@ -410,14 +409,14 @@ class CoCoCoOp():
         fake_imgs = self.fake_img_emb_gen(len(real_img_features), self.model.prompt_learner.n_ctx)
         images = torch.cat([real_img_features, fake_imgs], dim=0)
         labels = torch.cat([torch.ones(len(real_img_features)), torch.zeros(len(fake_imgs))], dim=0)
-        images = images.to(self.device)
-        labels = labels.to(self.device)
+        images = images.to(DEVICE)
+        labels = labels.to(DEVICE)
         return images, labels
     
     def parse_train_batch(self, batch):
         img, label = batch
-        img = img.to(self.device)
-        label = label.to(self.model.dtype).to(self.device)
+        img = img.to(DEVICE)
+        label = label.to(self.model.dtype).to(DEVICE)
         return img, label
 
     def test(self, ds):
