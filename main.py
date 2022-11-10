@@ -20,7 +20,7 @@ def run_with_config(config):
         ds.one_hot_encode_labels()
         t_sampler = DatasetSampler(ds, config.batch_size, config.per_class)
 
-        v_ds = ds_to_class[config.Training_ds](split='val', cache_transformed_images=True)
+        v_ds = ds_to_class[config.Training_ds](split='test', cache_transformed_images=True)
         v_ds.one_hot_encode_labels()
         v_sampler = DatasetSampler(v_ds, config.batch_size, config.per_class)
 
@@ -55,7 +55,7 @@ def run_with_config(config):
 
 this_config = {
     'Training_ds': 'Caltech101',
-    'per_class': 1,
+    'per_class': 16,
     'batch_size': 1,
     'epochs': 10,
     'lr': 1e-3, # TODOs
