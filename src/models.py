@@ -434,7 +434,8 @@ class CoCoCoOp():
             image_features, label = self.parse_train_batch(batch=batch)
             _, stats = self.model.forward(image_features, label, return_stats=True)
             _, m_stats = self.model.forward_meta_only(image_features, label, return_stats=True)
-            _, s_stats = self.model.forward_scaling_only(image_features, label, return_stats=True)
+            s_label = torch.ones(len(image_features)).to(DEVICE)
+            _, s_stats = self.model.forward_scaling_only(image_features, s_label, return_stats=True)
 
             m_stats = {f"meta_{k}": v for k, v in m_stats.items()}
             s_stats = {f"scale_{k}": v for k, v in s_stats.items()}
