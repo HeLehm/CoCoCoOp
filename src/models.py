@@ -162,7 +162,7 @@ class PromptLearner(nn.Module):
         classnames = [name.replace("_", " ") for name in classnames]
         prompts = [prompt_prefix + " " + name + "." for name in classnames]
 
-        tokenized_prompts = torch.cat([clip.tokenize(p) for p in prompts])  # (n_cls, n_tkn)
+        tokenized_prompts = torch.cat([clip.tokenize(p) for p in prompts]).to(DEVICE)  # (n_cls, n_tkn)
         with torch.no_grad():
             embedding = clip_model.token_embedding(tokenized_prompts).type(dtype)
 
