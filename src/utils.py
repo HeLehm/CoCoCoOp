@@ -7,8 +7,11 @@ def performance_metrics(pred, target, one_hot=True):
         target = target.argmax(dim=1).to(torch.long)
         pred = pred.argmax(dim=1).to(torch.long)
     else:
-        target = target.to(torch.long)
-        pred = pred.to(torch.long)
+        assert target.ndim == 1 and target.size() == pred.size()
+        pred = pred > 0.5
+        return {
+            'accuracy' : (target == pred).sum().item() / target.size(0)
+        }
     
     return {
         'accuracy': torchmetrics.functional.accuracy(pred, target).item(),

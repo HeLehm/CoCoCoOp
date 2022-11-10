@@ -433,7 +433,10 @@ class CoCoCoOp():
         for batch in tqdm(ds, desc="Testing"):
             image_features, label = self.parse_train_batch(batch=batch)
             logits = self.model.forward(image_features, label)
-            stats = performance_metrics(logits, label)
+            
+            stats = performance_metrics(logits, label, one_hot=True)
+            loss = F.cross_entropy(logits, label)
+            stats['loss'] = loss
 
             for k, v in stats.items():
                 if k not in stats_avg:
