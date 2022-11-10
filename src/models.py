@@ -368,11 +368,11 @@ class CoCoCoOp():
         img_features = self.model.image_features(img)
         return img_features[0]
 
-    def start_training(self):
+    def start_training(self, optimizer, lr):
         self.fake_img_emb_gen = FakeImageEmbeddingGenerator(text_encoder=self.create_cached_text_embedder())
         #TODO: schedule etc 
-        self.scale_optim = torch.optim.Adam(self.model.prompt_learner.meta_scaling_net.scaling_net.parameters(), lr=1e-3)
-        self.meta_optim = torch.optim.Adam(self.model.prompt_learner.meta_scaling_net.meta_net.parameters(), lr=1e-3)
+        self.scale_optim = optimizer(self.model.prompt_learner.meta_scaling_net.scaling_net.parameters(), lr=lr)
+        self.meta_optim = optimizer(self.model.prompt_learner.meta_scaling_net.meta_net.parameters(), lr=lr)
 
     def forward_backward(self, batch):
         #TODO: amp

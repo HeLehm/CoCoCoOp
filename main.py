@@ -1,10 +1,11 @@
-from torchvision.transforms import ToTensor
-
-from src.models import CoCoCoOp, CachedTextEmbedder
+from src.models import CoCoCoOp
 from src.datasets import Flowers102, DatasetSampler, StanfordCars, Caltech101
 from src.utils import avg_performance_metrics
 import wandb
 from tqdm import tqdm
+import torch
+
+from types import SimpleNamespace
 
 ds_to_class = {
     'Flowers102': Flowers102,
@@ -14,7 +15,8 @@ ds_to_class = {
 
 def run_with_config(config):
     with wandb.init(project='CoCoCoOp', config=config):
-        config = wandb.config
+        #config = wandb.config we dont do this so we cann pass classes and callables here
+        config = SimpleNamespace(**config)
 
         ds = ds_to_class[config.Training_ds](split='train', cache_transformed_images=True, download=True)
         ds.one_hot_encode_labels()
@@ -27,7 +29,7 @@ def run_with_config(config):
 
         model = CoCoCoOp() # TODO add cnfig
         model.build_model(ds.get_class_names(), clip_model_name=config.clip_backbone, ctx_init=config.ctx_init)
-        model.start_training()
+        model.start_training(config.optimizer, config.lr)
 
         ds.transform = model.img_to_features
         v_ds.transform = model.img_to_features
@@ -58,8 +60,8 @@ this_config = {
     'per_class': 16,
     'batch_size': 1,
     'epochs': 10,
-    'lr': 1e-3, # TODOs
-    'optimizer': 'Adam', # TODO
+    'lr': 1e-4,
+    'optimizer': torch.optim.Adam,
     'clip_backbone': 'ViT-B/16',
     'ctx_init': 'a photo of a',
 }
