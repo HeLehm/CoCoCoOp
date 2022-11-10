@@ -84,7 +84,7 @@ class _BaseDataSet(VisionDataset):
             config = datasets_download_config[self.name]
         except KeyError:
             raise ValueError(f'No download config for dataset {self.name}')
-        download_dataset(self.name, config)
+        download_dataset(config,remove_finished=True)
 
     def _check_exists(self) -> bool:
         return self.root.exists()
