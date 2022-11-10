@@ -351,6 +351,15 @@ class CoCoCoOp():
             print(f"Multiple GPUs detected (n_gpus={device_count}), use all of them!")
             self.model = nn.DataParallel(self.model)
 
+    def img_to_features(self, img):
+        """
+        img: PIL image
+        NOTE: single image only!
+        """
+        img = self.clip_img_preprocess(img).unsqueeze(0).to(self.device)
+        img_features = self.model.image_features(img)
+        return img_features[0]
+
     def start_training(self):
         self.fake_img_emb_gen = FakeImageEmbeddingGenerator(text_encoder=self.create_cached_text_embedder())
         #TODO: schedule etc 
@@ -362,10 +371,8 @@ class CoCoCoOp():
         self.scale_optim.zero_grad()
         self.meta_optim.zero_grad()
 
-        image, label = self.parse_train_batch(batch=batch) # image: (batch, 3, 224, 224), label: (batch) (on device)
+        image_features, label = self.parse_train_batch(batch=batch) # image: (batch, 3, 224, 224), label: (batch) (on device)
         
-        image_features = self.model.image_features(image) # (batch, 512)
-
         s_img_features, s_labels = self.create_scaling_batch(image_features) # (batch, 512)
         s_loss = self.model.forward_scaling_only(s_img_features, s_labels)
         s_loss.backward()
@@ -417,8 +424,7 @@ class CoCoCoOp():
         n = 0
         stats_avg = {}
         for batch in tqdm(ds, desc="Testing"):
-            img, label = self.parse_train_batch(batch=batch)
-            image_features = self.model.image_features(img)
+            image_features, label = self.parse_train_batch(batch=batch)
             logits = self.model.forward(image_features, label)
             stats = performance_metrics(logits, label)
             for k, v in stats.items():

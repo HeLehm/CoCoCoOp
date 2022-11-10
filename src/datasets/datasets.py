@@ -19,7 +19,8 @@ class _BaseDataSet(VisionDataset):
         shuffle=True,
         download=False,
         transform=None,
-        target_transform=None
+        target_transform=None,
+        cache_transformed_images=False,
     ) -> None:
 
         self.name = self.__class__.__name__
@@ -38,6 +39,10 @@ class _BaseDataSet(VisionDataset):
         annotation_file = self.root.joinpath('annotations.json')
         self.annotations = self.load_annotations(annotation_file, split, shuffle=shuffle)
         self.split = split
+
+        self.cache_transformed_images = cache_transformed_images
+        if cache_transformed_images:
+            self.cache = {}
 
        #TODO: class to idx mapping
 
@@ -86,6 +91,10 @@ class _BaseDataSet(VisionDataset):
         return f"split={self._split}"
 
     def __getitem__(self, idx) -> Tuple[Any, Any]:
+
+        if self.cache_transformed_images and self.cache.get(idx):
+            return self.cache[idx]
+
         anno_data = self.annotations[idx] # filename, number label, text label
         label = anno_data[1] #class number label
         #label = anno_data[2] # is textlabel
@@ -98,6 +107,10 @@ class _BaseDataSet(VisionDataset):
 
         if self.target_transform:
             label = self.target_transform(label)
+
+        if self.cache_transformed_images:
+            #TODO: maybe detach from device?
+            self.cache[idx] = (image, label)
 
         return image, label
 

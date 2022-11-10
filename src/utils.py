@@ -14,5 +14,7 @@ def performance_metrics(pred, target):
     }
 
 def avg_performance_metrics(metrics : List[Dict[str,float]]) -> Dict[str,float]:
-    return {k: torch.mean(torch.stack([m[k] for m in metrics])) for k in metrics}
+    return {
+        k: sum([m[k] for m in metrics]) / len(metrics) for k in metrics[0].keys()
+    }
 

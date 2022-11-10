@@ -3,38 +3,69 @@ from torchvision.transforms import ToTensor
 from src.models import CoCoCoOp, CachedTextEmbedder
 from src.datasets import Flowers102, DatasetSampler
 from src.utils import avg_performance_metrics
+import wandb
+from tqdm import tqdm
 
-EPOCHS = 10
+ds_to_class = {
+    'Flowers102': Flowers102,
+}
 
-ds = Flowers102(split='train')
-ds.one_hot_encode_labels()
-sampler = DatasetSampler(ds, 1, 16)
+def run_with_config(config):
+    with wandb.init(project='CoCoCoOp', config=config):
+        config = wandb.config
 
-ds_val = Flowers102(split='val')
-ds_val.one_hot_encode_labels()
-val_sampler = DatasetSampler(ds_val, 1, 1)
+        ds = ds_to_class[config.Training_ds](split='train', cache_transformed_images=True)
+        ds.one_hot_encode_labels()
+        t_sampler = DatasetSampler(ds, config.batch_size, config.per_class)
+
+        v_ds = ds_to_class[config.Training_ds](split='val', cache_transformed_images=True)
+        v_ds.one_hot_encode_labels()
+        v_sampler = DatasetSampler(v_ds, config.batch_size, config.per_class)
 
 
-model = CoCoCoOp()
-model.build_model(ds.get_class_names(), clip_model_name='ViT-B/16')
-cached_text_embedder = model.create_cached_text_embedder()
+        model = CoCoCoOp() # TODO add cnfig
+        model.build_model(ds.get_class_names(), clip_model_name=config.clip_backbone)
+        model.start_training()
 
-ds.transform = model.clip_img_preprocess
-ds_val.transform = model.clip_img_preprocess
+        ds.transform = model.img_to_features
+        v_ds.transform = model.img_to_features
 
-b = 0
-model.start_training()
-for e in range(EPOCHS):
-    stats = []
-    for batch in sampler:
-        model.model.train()
-        batch_stats = model.forward_backward(batch)
-        stats.append(batch_stats)
-    stats = avg_performance_metrics(stats)
-    print(f'Epoch {e} stats: {stats}')
+        wandb.watch(model.model.prompt_learner)
 
-    val_acc = model.test(val_sampler)
-    print(val_acc)
+        for epoch in range(config.epochs):
+            print(f'start Epoch {epoch}')
+            model.model.train()
+
+            stats = []
+
+            for batch in tqdm(t_sampler, desc=f"Training epoch {epoch}"):
+                batch_stats = model.forward_backward(batch)
+                stats.append(batch_stats)
+            
+            stats = avg_performance_metrics(stats)
+
+            stats = {f'train{epoch}/{k}': v for k, v in stats.items()}
+            wandb.log(stats)
+
+            print(f'Epoch {epoch} train stats: {stats}')
+
+            val_stats = model.test(v_sampler)
+            val_stats = {f'val{epoch}/{k}': v for k, v in val_stats.items()}
+            wandb.log(val_stats)
+
+
+this_config = {
+    'Training_ds': 'Flowers102',
+    'per_class': 1,
+    'batch_size': 1,
+    'epochs': 10,
+    'lr': 1e-3, # TODO
+    'optimizer': 'Adam', # TODO
+    'clip_backbone': 'ViT-B/16'
+}
+
+if __name__ == '__main__':
+    run_with_config(this_config)
         
 
 
