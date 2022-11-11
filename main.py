@@ -14,7 +14,7 @@ ds_to_class = {
 }
 
 def run_with_config(config):
-    with wandb.init(project='CoCoCoOp', config=config):
+    with wandb.init(project='CoCoCoOp', config=config, entity="bschergen"):
         #config = wandb.config we dont do this so we cann pass classes and callables here
         config = SimpleNamespace(**config)
 
