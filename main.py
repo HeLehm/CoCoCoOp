@@ -27,7 +27,7 @@ def run_with_config(config):
         v_sampler = DatasetSampler(v_ds, config.batch_size, config.per_class)
 
 
-        model = CoCoCoOp() # TODO add cnfig
+        model = CoCoCoOp()
         model.build_model(ds.get_class_names(), clip_model_name=config.clip_backbone, ctx_init=config.ctx_init, prec=config.prec)
         model.start_training(config)
 
@@ -39,8 +39,8 @@ def run_with_config(config):
         for epoch in range(config.epochs):
             model.model.train()
             
-            wandb.log({'scale_scheduler_lr':model.scale_scheduler.get_lr()})
-            wandb.log({'meta_scheduler_lr':model.meta_scheduler.get_lr()})
+            wandb.log({'scale_scheduler_lr':model.scale_scheduler.get_lr()[0]})
+            wandb.log({'meta_scheduler_lr':model.meta_scheduler.get_lr()[0]})
 
             stats = []
             for batch in tqdm(t_sampler, desc=f"Training epoch {epoch}"):
