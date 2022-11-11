@@ -38,11 +38,18 @@ def run_with_config(config):
 
         for epoch in range(config.epochs):
             model.model.train()
+            
+            wandb.log({'scale_scheduler_lr':model.scale_scheduler.get_lr()})
+            wandb.log({'meta_scheduler_lr':model.meta_scheduler.get_lr()})
+
             stats = []
             for batch in tqdm(t_sampler, desc=f"Training epoch {epoch}"):
                 batch_stats = model.forward_backward(batch)
                 stats.append(batch_stats)
+
             model.schedule_step()
+
+            
             
             stats = avg_performance_metrics(stats)
 
@@ -66,7 +73,7 @@ this_config = {
     'optimizer': torch.optim.SGD,
     'lr_scheduler': torch.optim.lr_scheduler.CosineAnnealingLR,
     'lr_scheduler_kwargs': {'T_max': 10},
-    'lr_scheduler_warmup_kwargs': {'warmup_start_value': 1e-5, 'warmup_end_value': 1e-5, 'warmup_duration': 2},
+    'lr_scheduler_warmup_kwargs': {'init_lr':0.01, 'warmup_strategy': 'constant', 'num_warmup': 1},
     'clip_backbone': 'ViT-B/16',
     'ctx_init': 'a photo of a',
 }

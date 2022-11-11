@@ -5,9 +5,9 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.cuda.amp import GradScaler, autocast
 
-from .Submodules.CLIP.clip import clip 
+from .Submodules.CLIP.clip import clip
+from .Submodules.torch_warmup_lr.torch_warmup_lr.wrappers import WarmupLR 
 
-from ignite.handlers.param_scheduler import create_lr_scheduler_with_warmup
 
 
 from tqdm import tqdm
@@ -383,10 +383,10 @@ class CoCoCoOp():
         self.meta_optim = optimizer(self.model.prompt_learner.meta_scaling_net.meta_net.parameters(), lr=config.lr)
 
         self.scale_scheduler = scheduler(self.scale_optim, **config.lr_scheduler_kwargs)
-        self.scale_scheduler = create_lr_scheduler_with_warmup(self.scale_scheduler, **config.lr_scheduler_warmup_kwargs)
+        self.scale_scheduler = WarmupLR(self.scale_scheduler, **config.lr_scheduler_warmup_kwargs)
 
         self.meta_scheduler = scheduler(self.meta_optim, **config.lr_scheduler_kwargs)
-        self.meta_scheduler = create_lr_scheduler_with_warmup(self.meta_scheduler, **config.lr_scheduler_warmup_kwargs)
+        self.meta_scheduler = WarmupLR(self.meta_scheduler, **config.lr_scheduler_warmup_kwargs)
 
     def schedule_step(self):
         self.scale_scheduler.step()
