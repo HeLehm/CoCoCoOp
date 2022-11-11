@@ -2,6 +2,7 @@ from .datasets import _BaseDataSet
 from collections import defaultdict
 import warnings
 import torch
+from typing import Union
 
 class DatasetSampler():
     """
@@ -12,7 +13,7 @@ class DatasetSampler():
         self,
         dataset: _BaseDataSet,
         batch_size: int,
-        datapoints_per_class: int,
+        datapoints_per_class: Union[int,None] = None,
     ) -> None:
         self.dataset = dataset
         self.batch_size = batch_size
@@ -25,22 +26,27 @@ class DatasetSampler():
             #text_label = datapoint[2]
             label_id = datapoint[1]
         
-            if len(label_dict[label_id]) >= self.datapoints_per_class:
+            if self.datapoints_per_class is not None and len(label_dict[label_id]) >= self.datapoints_per_class:
                 continue
-            label_dict[label_id].append(i)
 
-        for k,v in label_dict.items():
-            if len(v) < self.datapoints_per_class:
-                warnings.warn(f'Class {k} has less than {self.datapoints_per_class} datapoints')
+            label_dict[label_id].append(i)
+        if self.datapoints_per_class is not None:
+            for k,v in label_dict.items():
+                if len(v) < self.datapoints_per_class:
+                    warnings.warn(f'Class {k} has less than {self.datapoints_per_class} datapoints')
 
 
         self.idx_list = []
-        for i in range(self.datapoints_per_class):
-            for _,v in label_dict.items():
-                try:
-                    self.idx_list.append(v[i])
-                except IndexError:
-                    continue
+        if self.datapoints_per_class is None:
+            for k,v in label_dict.items():
+                self.idx_list.extend(v)
+        else:
+            for i in range(self.datapoints_per_class):
+                for _,v in label_dict.items():
+                    try:
+                        self.idx_list.append(v[i])
+                    except IndexError:
+                        continue
 
     def __iter__(self):
         for i in range(0, len(self.idx_list), self.batch_size):

@@ -129,6 +129,7 @@ class PromptLearner(nn.Module):
         n_ctx = 10,
         ctx_init = "a photo of a",
         prec = "fp32",
+        learnable_ctx = False,
     ):
         super().__init__()
         n_cls = len(classnames)
@@ -154,7 +155,7 @@ class PromptLearner(nn.Module):
         print(f'Initial context: "{prompt_prefix}"')
         print(f"Number of context words (tokens): {n_ctx}")
 
-        self.ctx = ctx_vectors
+        self.ctx = ctx_vectors if not learnable_ctx else nn.Parameter(ctx_vectors)
 
         #meta and scaling net
         self.meta_scaling_net = MetaAndScalingNet(vis_dim, ctx_dim)
@@ -240,6 +241,7 @@ class CustomCLIP(nn.Module):
         ctx_init = "a photo of a",
         n_ctx = 10,
         prec = "fp32",
+        learnable_ctx = False,
     ):
         super().__init__()
         self.prompt_learner = PromptLearner(
@@ -248,6 +250,7 @@ class CustomCLIP(nn.Module):
                 n_ctx=n_ctx,
                 ctx_init=ctx_init,
                 prec=prec,
+                learnable_ctx=learnable_ctx,
         )
         self.clip_model = clip_model
         self.tokenized_prompts = self.prompt_learner.tokenized_prompts
@@ -318,6 +321,7 @@ class CoCoCoOp():
         ctx_init = "a photo of a",
         n_ctx = 10,
         prec = "fp32",
+        learnable_ctx = False,
     ):
 
         
@@ -335,6 +339,7 @@ class CoCoCoOp():
             ctx_init=ctx_init,
             n_ctx=n_ctx,
             prec=prec,
+            learnable_ctx=learnable_ctx,
         )
 
         print("Turning off gradients in both the image and the text encoder")

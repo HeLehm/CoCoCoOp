@@ -24,7 +24,7 @@ def run_with_config(config):
 
         v_ds = ds_to_class[config.Training_ds](split='val', cache_transformed_images=True)
         v_ds.one_hot_encode_labels()
-        v_sampler = DatasetSampler(v_ds, config.batch_size, config.per_class)
+        v_sampler = DatasetSampler(v_ds, config.batch_size)
 
 
         model = CoCoCoOp()
@@ -49,8 +49,6 @@ def run_with_config(config):
 
             model.schedule_step()
 
-            
-            
             stats = avg_performance_metrics(stats)
 
             stats = {f'train/{k}': v for k, v in stats.items()}
@@ -76,6 +74,7 @@ this_config = {
     'lr_scheduler_warmup_kwargs': {'init_lr':0.01, 'warmup_strategy': 'constant', 'num_warmup': 1},
     'clip_backbone': 'ViT-B/16',
     'ctx_init': 'a photo of a',
+    'learnable_ctx' :  True,
 }
 
 if __name__ == '__main__':
