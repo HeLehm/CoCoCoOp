@@ -3,4 +3,4 @@
 	url = git@github.com:openai/CLIP.git
 [submodule "src/Submodules/torch_warmup_lr"]
 	path = src/Submodules/torch_warmup_lr
-	url = git@github.com:lehduong/torch-warmup-lr.git
+	url = https://github.com/lehduong/torch-warmup-lr.git
