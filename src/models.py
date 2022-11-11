@@ -7,6 +7,9 @@ from torch.cuda.amp import GradScaler, autocast
 
 from .Submodules.CLIP.clip import clip 
 
+from ignite.handlers.param_scheduler import create_lr_scheduler_with_warmup
+
+
 from tqdm import tqdm
 
 from .utils import performance_metrics
@@ -368,11 +371,26 @@ class CoCoCoOp():
         img_features = self.model.image_features(img)
         return img_features[0]
 
-    def start_training(self, optimizer, lr):
+    def start_training(self, config):
+        optimizer = config.optimizer
+        scheduler = config.lr_scheduler
+
+        
+
         self.fake_img_emb_gen = FakeImageEmbeddingGenerator(text_encoder=self.create_cached_text_embedder())
         #TODO: schedule etc 
-        self.scale_optim = optimizer(self.model.prompt_learner.meta_scaling_net.scaling_net.parameters(), lr=lr)
-        self.meta_optim = optimizer(self.model.prompt_learner.meta_scaling_net.meta_net.parameters(), lr=lr)
+        self.scale_optim = optimizer(self.model.prompt_learner.meta_scaling_net.scaling_net.parameters(), lr=config.lr)
+        self.meta_optim = optimizer(self.model.prompt_learner.meta_scaling_net.meta_net.parameters(), lr=config.lr)
+
+        self.scale_scheduler = scheduler(self.scale_optim, **config.lr_scheduler_kwargs)
+        self.scale_scheduler = create_lr_scheduler_with_warmup(self.scale_scheduler, **config.lr_scheduler_warmup_kwargs)
+
+        self.meta_scheduler = scheduler(self.meta_optim, **config.lr_scheduler_kwargs)
+        self.meta_scheduler = create_lr_scheduler_with_warmup(self.meta_scheduler, **config.lr_scheduler_warmup_kwargs)
+
+    def schedule_step(self):
+        self.scale_scheduler.step()
+        self.meta_scheduler.step()
 
     def forward_backward(self, batch):
         #TODO: amp

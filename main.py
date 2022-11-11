@@ -28,8 +28,8 @@ def run_with_config(config):
 
 
         model = CoCoCoOp() # TODO add cnfig
-        model.build_model(ds.get_class_names(), clip_model_name=config.clip_backbone, ctx_init=config.ctx_init)
-        model.start_training(config.optimizer, config.lr)
+        model.build_model(ds.get_class_names(), clip_model_name=config.clip_backbone, ctx_init=config.ctx_init, prec=config.prec)
+        model.start_training(config)
 
         ds.transform = model.img_to_features
         v_ds.transform = model.img_to_features
@@ -42,6 +42,7 @@ def run_with_config(config):
             for batch in tqdm(t_sampler, desc=f"Training epoch {epoch}"):
                 batch_stats = model.forward_backward(batch)
                 stats.append(batch_stats)
+            model.schedule_step()
             
             stats = avg_performance_metrics(stats)
 
@@ -60,8 +61,12 @@ this_config = {
     'per_class': 16,
     'batch_size': 1,
     'epochs': 10,
-    'lr': 1e-4,
-    'optimizer': torch.optim.Adam,
+    'lr': 0.002,
+    'prec' : 'fp32',
+    'optimizer': torch.optim.SGD,
+    'lr_scheduler': torch.optim.lr_scheduler.CosineAnnealingLR,
+    'lr_scheduler_kwargs': {'T_max': 10},
+    'lr_scheduler_warmup_kwargs': {'warmup_start_value': 1e-5, 'warmup_end_value': 1e-5, 'warmup_duration': 2},
     'clip_backbone': 'ViT-B/16',
     'ctx_init': 'a photo of a',
 }
