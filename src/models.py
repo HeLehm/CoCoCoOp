@@ -229,7 +229,7 @@ class CoCoCoOp(nn.Module):
     """
 
     def get_image_features(self, image):
-        image = self.preprocess(image).unsqueeze(0).to(self.prompt_learner.device)
+        image = self.preprocess(image).unsqueeze(0).to(self.prompt_learner.device).type(self.dtype)
         with torch.no_grad():
             image_features = self.image_encoder(image)
             image_features = image_features / image_features.norm(dim=-1, keepdim=True)

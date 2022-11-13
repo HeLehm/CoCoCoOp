@@ -62,6 +62,7 @@ def run(config, with_wandb=True):
 
         train_ds.transform = lambda x: trainer.model.get_image_features(x)
         val_ds.transform = lambda x: trainer.model.get_image_features(x)
+        val_ds_full.transform = lambda x: trainer.model.get_image_features(x)
         
         print("Training on classes", train_ds.get_active_class_names())
 
