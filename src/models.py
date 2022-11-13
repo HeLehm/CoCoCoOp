@@ -195,12 +195,11 @@ class CoCoCoOp(nn.Module):
         self.dtype = clip_model.dtype
         self.image_encoder = clip_model.visual
 
-        self.prompt_learner = PromptLearner(clip_model, device, ctx_init)
-        self.prompt_learner.to(device)
-
-        self.text_encoder = TextEncoder(clip_model)
-
+        self.prompt_learner = PromptLearner(clip_model, device, ctx_init).to(device).to(self.dtype)
         
+
+        self.text_encoder = TextEncoder(clip_model).to(device).to(self.dtype)
+
 
     """
     classes realted functions
