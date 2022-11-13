@@ -24,7 +24,7 @@ this_config = {
     'lr_scheduler': torch.optim.lr_scheduler.CosineAnnealingLR,
     'lr_scheduler_kwargs': {'T_max': 10},
     'lr_scheduler_warmup_kwargs': {'init_lr':0.01, 'warmup_strategy': 'constant', 'num_warmup': 1},
-    'clip_backbone': 'ViT-B/16',
+    'clip_backbone': 'ViT-B/32',
     'ctx_init': 'a photo of a',
 }
 
@@ -103,7 +103,7 @@ def run(config, with_wandb=True):
 
 
 if __name__ == '__main__':
-    with wandb.init(project='CoCoCoOp', config=this_config):
+    with wandb.init(project='CoCoCoOp', config=this_config, entity="bschergen"):
         run(this_config, True)
     
 
