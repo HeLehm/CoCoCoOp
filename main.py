@@ -129,7 +129,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args.data_dir)
 
-
-    run(this_config, args.wandb, args.data_dir)
+    if args.wandb:
+        with wandb.init(project='CoCoCoOp', config=this_config, entity="bschergen"):
+            run(this_config, True, args.data_dir)
+    else:
+        run(this_config, False, args.data_dir)
 
 
