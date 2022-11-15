@@ -3,7 +3,9 @@ from typing import List, Dict
 import torchmetrics
 from .Submodules.CLIP.clip import clip
 
-def load_clip(backbone_name, device):
+def load_clip(backbone_name, device=None, force_cpu = True):
+    if force_cpu and device is None:
+        device = torch.device("cpu")
     model, preprocess = clip.load(backbone_name, device=device)
     return model, preprocess
 

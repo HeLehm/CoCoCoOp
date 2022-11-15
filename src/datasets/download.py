@@ -1,10 +1,7 @@
 import os
 from typing import List, Optional
 from torchvision.datasets.utils import download_url, extract_archive
-from .constants import data_dir_path
 import shutil
-
-base_data_dir = data_dir_path()
 
 
 # imagenet like this: https://github.com/openai/CLIP/blob/main/notebooks/Prompt_Engineering_for_ImageNet.ipynb
@@ -119,9 +116,7 @@ def download_and_extract_archive(
     except:
         return archive
 
-def download_dataset(dataset_config, remove_finished: bool = False):
-        dataset_dir = os.path.join(base_data_dir, dataset_config['name'])
-
+def download_dataset(dataset_config, dataset_dir: str, remove_finished: bool = False):
         # create dataset_dir if it doesn't exist eelse return
         if os.path.exists(dataset_dir):
             return

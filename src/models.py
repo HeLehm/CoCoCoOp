@@ -117,13 +117,13 @@ class PromptLearner(nn.Module):
     def _init_ctx(self, ctx_init):
         ctx_init = ctx_init.replace("_", " ")
         n_ctx = len(ctx_init.split(" "))
-        prompt = clip.tokenize(ctx_init).to(self.device)
+        prompt = clip.tokenize(ctx_init)
         with torch.no_grad():
             embedding = self.clip_model.token_embedding(prompt).type(self.dtype)
         ctx_vectors = embedding[0, 1 : 1 + n_ctx, :]
 
         self.prompt_prefix = ctx_init
-        self.ctx = ctx_vectors
+        self.ctx = ctx_vectors.to(self.device)
         self.n_ctx = n_ctx
 
     def set_class_names(self, classnames):
@@ -198,7 +198,8 @@ class CoCoCoOp(nn.Module):
         self.prompt_learner = PromptLearner(clip_model, device, ctx_init).to(device).to(self.dtype)
         
 
-        self.text_encoder = TextEncoder(clip_model).to(device).to(self.dtype)
+        self.text_encoder = TextEncoder(clip_model).to(self.dtype)
+        self.text_encoder.training = False
 
 
     """
@@ -228,7 +229,7 @@ class CoCoCoOp(nn.Module):
     """
 
     def get_image_features(self, image):
-        image = self.preprocess(image).unsqueeze(0).to(self.prompt_learner.device).type(self.dtype)
+        image = self.preprocess(image).unsqueeze(0).to(self.prompt_learner.device)
         with torch.no_grad():
             image_features = self.image_encoder(image)
             image_features = image_features / image_features.norm(dim=-1, keepdim=True)

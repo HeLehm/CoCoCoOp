@@ -28,7 +28,14 @@ this_config = {
     'ctx_init': 'a photo of a',
 }
 
-def run(config, with_wandb=True):
+def run(config, with_wandb=True, data_dir=None):
+    try:
+        _run(config, with_wandb, data_dir)
+    except Exception as e:
+        print(e)
+        raise e
+
+def _run(config, with_wandb=True, data_dir=None):
     config = SimpleNamespace(**config)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -42,10 +49,13 @@ def run(config, with_wandb=True):
 
         lwf_beta = config.CL_config.lwf_beta if i > 0 and hasattr(config, 'CL_config') and hasattr(config.CL_config, 'lwf_beta') else None
         
+
         dataset_kwargs = {
             'one_hot_encode_labels' : True,
             'download' : True,
         }
+        if data_dir is not None:
+            dataset_kwargs['data_dir'] = data_dir
 
         ds_class = get_dataset_class(config.Training_ds)
 
@@ -99,13 +109,27 @@ def run(config, with_wandb=True):
                 wandb.log(val_stats_full)
 
             print("Validation stats", val_stats)
+            print("Validation stats full", val_stats_full)
             
         trainer.prev_model = copy.deepcopy(trainer.model)
 
 
 if __name__ == '__main__':
-    with wandb.init(project='CoCoCoOp', config=this_config, entity="bschergen"):
-        run(this_config, True)
+    #with wandb.init(project='CoCoCoOp', config=this_config, entity="bschergen"):
+    #    run(this_config, True)
     
+    import argparse
+
+    parser = argparse.ArgumentParser(description='A test program.')
+
+    #data dir argument
+    parser.add_argument('--data_dir', type=str, default=None, help='dataset data directory')
+    parser.add_argument('--wandb', action='store_true', help='Whether to use wandb')
+
+    args = parser.parse_args()
+    print(args.data_dir)
+
+
+    run(this_config, args.wandb, args.data_dir)
 
 

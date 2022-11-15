@@ -54,7 +54,7 @@ class CoCoCoOpTrainer():
     ):
         self.device = device
 
-        clip_model, clip_preprocess = load_clip(config.clip_backbone, self.device)
+        clip_model, clip_preprocess = load_clip(config.clip_backbone)
 
         self.model = CoCoCoOp(
             clip_model,
