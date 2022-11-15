@@ -98,7 +98,7 @@ class CoCoCoOpTrainer():
 
  
         meta_logits = self.model.forward_meta_only(img_features)
-        scale_logits = self.model.forward_scale_only(s_images)
+        scale_logits = self.model.forward_scale_only(s_images).squeeze(-1)
 
         meta_ce_loss = F.cross_entropy(meta_logits, labels)
         scale_ce_loss = F.binary_cross_entropy(scale_logits, s_labels)
@@ -113,14 +113,14 @@ class CoCoCoOpTrainer():
             assert self.prev_model is not None, "Previous model is not defined"
 
             old_meta_logits = self.prev_model.forward_meta_only(img_features)
-            old_scale_logits = self.prev_model.forward_scale_only(s_images)
+            old_scale_logits = self.prev_model.forward_scale_only(s_images).squeeze(-1)
 
             n_classes = len(self.prev_model.classnames)
-            old_classes_meta_logits = meta_logits[:, :n_classes]
-            old_classes_scale_logits = scale_logits[:, :n_classes]
+            old_classes_new_meta_logits = meta_logits[:, :n_classes]
+            old_classes__new_scale_logits = scale_logits # no slicking as the classes are the same (seen and unseen)
 
-            meta_lwf_loss = F.cross_entropy(old_classes_meta_logits, old_meta_logits) * self.lwf_beta
-            scale_lwf_loss = F.binary_cross_entropy(old_classes_scale_logits, old_scale_logits) * self.lwf_beta
+            meta_lwf_loss = F.cross_entropy(old_classes_new_meta_logits, old_meta_logits) * lwf_beta
+            scale_lwf_loss = F.binary_cross_entropy(old_classes__new_scale_logits, old_scale_logits) * lwf_beta
 
             meta_loss += meta_lwf_loss
             scale_loss += scale_lwf_loss

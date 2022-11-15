@@ -5,6 +5,7 @@ import wandb
 from tqdm import tqdm
 import torch
 import copy
+import traceback
 
 from src.utils import frange
 
@@ -32,6 +33,7 @@ def run(config, with_wandb=True, data_dir=None):
     try:
         _run(config, with_wandb, data_dir)
     except Exception as e:
+        print(traceback.format_exc())
         print(e)
         raise e
 
@@ -114,20 +116,13 @@ def _run(config, with_wandb=True, data_dir=None):
         trainer.prev_model = copy.deepcopy(trainer.model)
 
 
-if __name__ == '__main__':
-    #with wandb.init(project='CoCoCoOp', config=this_config, entity="bschergen"):
-    #    run(this_config, True)
-    
+if __name__ == '__main__':    
     import argparse
 
     parser = argparse.ArgumentParser(description='A test program.')
-
-    #data dir argument
     parser.add_argument('--data_dir', type=str, default=None, help='dataset data directory')
     parser.add_argument('--wandb', action='store_true', help='Whether to use wandb')
-
     args = parser.parse_args()
-    print(args.data_dir)
 
     if args.wandb:
         with wandb.init(project='CoCoCoOp', config=this_config, entity="bschergen"):
@@ -135,4 +130,7 @@ if __name__ == '__main__':
     else:
         run(this_config, False, args.data_dir)
 
+
+#TODO:
+# - fix lwf
 
