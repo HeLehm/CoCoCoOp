@@ -1,14 +1,10 @@
 from .models import CoCoCoOp
 from .utils import load_clip
 
-from collections import OrderedDict
-
-import copy
 
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-from torch.cuda.amp import GradScaler, autocast
 
 from .Submodules.CLIP.clip import clip
 from .Submodules.torch_warmup_lr.torch_warmup_lr.wrappers import WarmupLR 
@@ -20,7 +16,24 @@ from .utils import performance_metrics, avg_performance_metrics
 from typing import List
 import random
 
+from torch.autograd import Variable
+
 from .models import TextEncoder
+
+def MultiClassCrossEntropy(logits, labels, T):
+    """
+    https://github.com/ngailapdi/LWF/blob/master/model.py
+    """
+    # Ld = -1/N * sum(N) sum(C) softmax(label) * log(softmax(logit))
+    labels = Variable(labels.data, requires_grad=False).cuda()
+    outputs = torch.log_softmax(logits/T, dim=1)   # compute the log of softmax values
+    labels = torch.softmax(labels/T, dim=1)
+    # print('outputs: ', outputs)
+    # print('labels: ', labels.shape)
+    outputs = torch.sum(outputs * labels, dim=1, keepdim=False)
+    outputs = -torch.mean(outputs, dim=0, keepdim=False)
+    # print('OUT: ', outputs)
+    return Variable(outputs.data, requires_grad=True).cuda()
 
 class FakeImageEmbeddingGenerator():
     """
@@ -96,18 +109,16 @@ class CoCoCoOpTrainer():
         img_features, labels = self.parse_train_batch(batch)
         s_images, s_labels = self.create_scaling_batch(img_features)
 
- 
         meta_logits = self.model.forward_meta_only(img_features)
         scale_logits = self.model.forward_scale_only(s_images).squeeze(-1)
 
+        # compute statistics for logging
+        meta_stats = performance_metrics(meta_logits, labels, one_hot=True)
+        scale_stats = performance_metrics(scale_logits, s_labels, one_hot=False)
+
+        # compute cross entopy losses
         meta_ce_loss = F.cross_entropy(meta_logits, labels)
         scale_ce_loss = F.binary_cross_entropy(scale_logits, s_labels)
-
-        meta_loss = meta_ce_loss
-        scale_loss = scale_ce_loss
-
-        meta_lwf_loss = None
-        scale_lwf_loss = None
 
         if lwf_beta is not None:
             assert self.prev_model is not None, "Previous model is not defined"
@@ -119,23 +130,22 @@ class CoCoCoOpTrainer():
             old_classes_new_meta_logits = meta_logits[:, :n_classes]
             old_classes__new_scale_logits = scale_logits # no slicking as the classes are the same (seen and unseen)
 
-            meta_lwf_loss = F.cross_entropy(old_classes_new_meta_logits, old_meta_logits) * lwf_beta
+            meta_lwf_loss = MultiClassCrossEntropy(old_classes_new_meta_logits, old_meta_logits, 1./lwf_beta)
             scale_lwf_loss = F.binary_cross_entropy(old_classes__new_scale_logits, old_scale_logits) * lwf_beta
 
-            meta_loss += meta_lwf_loss
-            scale_loss += scale_lwf_loss
-
-        meta_stats = performance_metrics(meta_logits, labels, one_hot=True)
-        meta_stats["ce_loss"] = meta_ce_loss.item()
-        meta_stats["loss"] = meta_loss.item()
-        if meta_lwf_loss is not None:
             meta_stats["lwf_loss"] = meta_lwf_loss.item()
-
-        scale_stats = performance_metrics(scale_logits, s_labels, one_hot=False)
-        scale_stats["bce_loss"] = scale_ce_loss.item()
-        scale_stats["loss"] = scale_loss.item()
-        if scale_lwf_loss is not None:
             scale_stats["lwf_loss"] = scale_lwf_loss.item()
+            meta_stats["ce_loss"] = meta_ce_loss.item()
+            scale_stats["bce_loss"] = scale_ce_loss.item()
+
+            meta_loss = meta_ce_loss + meta_lwf_loss
+            scale_loss = scale_ce_loss + scale_lwf_loss
+        else:
+            meta_loss = meta_ce_loss
+            scale_loss = scale_ce_loss
+
+        meta_stats["loss"] = meta_loss.item()        
+        scale_stats["loss"] = scale_loss.item()
 
         meta_stats = {'meta_' + k: v for k, v in meta_stats.items()}
         scale_stats = {'scale_' + k: v for k, v in scale_stats.items()}

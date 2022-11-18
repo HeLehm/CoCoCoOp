@@ -116,7 +116,7 @@ class _BaseDataSet(VisionDataset):
         return annotations
 
     def one_hot_encode_labels(self):
-        self.target_transform = lambda x: torch.nn.functional.one_hot(torch.tensor(x - self.class_slices[0]), self.class_slices[1] - self.class_slices[0])
+        self.target_transform = lambda x: torch.nn.functional.one_hot(torch.tensor(x), self.class_slices[1])
 
     def download(self):
         if self._check_exists():

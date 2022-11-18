@@ -6,19 +6,25 @@ from tqdm import tqdm
 import torch
 import copy
 import traceback
+import random
 
 from src.utils import frange
 
 from types import SimpleNamespace
 
+def set_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    random.seed(seed)
+
 this_config = {
     'CL_config' : SimpleNamespace(**{
         'type' : 'class_incremental',
-        'steps' : 10,
+        'steps' : 2,
         'lwf_beta' : 0.5
     }),
     'Training_ds': 'Caltech101',
-    'batch_size': 1,
+    'batch_size': 4,
     'epochs': 10,
     'lr': 0.002,
     'optimizer': torch.optim.SGD,
@@ -44,6 +50,9 @@ def _run(config, with_wandb=True, data_dir=None):
 
     trainer = CoCoCoOpTrainer()
     trainer.build_model(config, device=device)
+
+    if with_wandb:
+        wandb.watch(trainer.model.prompt_learner, log='all')
 
     
     last_f_val = 0.
@@ -72,11 +81,15 @@ def _run(config, with_wandb=True, data_dir=None):
 
         trainer.model.add_class_names(train_ds.get_active_class_names())
 
+        print("class slices",train_sampler.dataset.class_slices)
+
         train_ds.transform = lambda x: trainer.model.get_image_features(x)
         val_ds.transform = lambda x: trainer.model.get_image_features(x)
         val_ds_full.transform = lambda x: trainer.model.get_image_features(x)
         
         print("Training on classes", train_ds.get_active_class_names())
+
+
 
         trainer.init_opt(config)
         for e in range(config.epochs):
@@ -114,6 +127,7 @@ def _run(config, with_wandb=True, data_dir=None):
             print("Validation stats full", val_stats_full)
             
         trainer.prev_model = copy.deepcopy(trainer.model)
+        trainer.prev_model.eval()
 
 
 if __name__ == '__main__':    
@@ -122,7 +136,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A test program.')
     parser.add_argument('--data_dir', type=str, default=None, help='dataset data directory')
     parser.add_argument('--wandb', action='store_true', help='Whether to use wandb')
+    parser.add_argument('--seed', type=int, default=42, help='Random seed')
     args = parser.parse_args()
+
+    this_config['seed'] = args.seed
+    set_seed(args.seed)
 
     if args.wandb:
         with wandb.init(project='CoCoCoOp', config=this_config, entity="bschergen"):
@@ -130,7 +148,10 @@ if __name__ == '__main__':
     else:
         run(this_config, False, args.data_dir)
 
-
 #TODO:
-# - fix lwf
+# train scaling and meta together
+# full forward pass for val
+# random sentence gernertor with fstring and random nouns
+# memory replay?
+# last slice seems not to be used
 

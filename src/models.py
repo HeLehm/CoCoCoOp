@@ -114,6 +114,18 @@ class PromptLearner(nn.Module):
             ("sigmoid", nn.Sigmoid())
         ]))
 
+        self.scaling_net.apply(self._init_weights)
+        self.meta_net.apply(self._init_weights)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Embedding):
+            module.weight.data.normal_(mean=0.0, std=0.1)
+            if module.padding_idx is not None:
+                module.weight.data[module.padding_idx].zero_()
+        elif isinstance(module, nn.LayerNorm):
+            module.bias.data.zero_()
+            module.weight.data.fill_(1.0)
+
     def _init_ctx(self, ctx_init):
         ctx_init = ctx_init.replace("_", " ")
         n_ctx = len(ctx_init.split(" "))
