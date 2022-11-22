@@ -3,6 +3,20 @@ from typing import List, Dict
 import torchmetrics
 from .Submodules.CLIP.clip import clip
 
+import yaml
+
+def load_class_order(path):
+    #from yaml file
+    with open(path, 'r') as f:
+        class_order = yaml.load(f, Loader=yaml.FullLoader)
+    return class_order['class_order']
+
+def load_class_names(path):
+    with open(path, 'r') as f:
+        # line = 0\tclass_name
+        class_names = [line.split('\t')[1].strip() for line in f.readlines()]
+    return class_names
+
 def load_clip(backbone_name, device=None, force_cpu = True):
     if force_cpu and device is None:
         device = torch.device("cpu")

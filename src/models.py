@@ -196,13 +196,10 @@ class CoCoCoOp(nn.Module):
     def __init__(
         self,
         clip_model,
-        clip_preprocess,
         device,
         ctx_init = "a photo of a",
     ) -> None:
         super().__init__()
-
-        self.preprocess = clip_preprocess
 
         self.dtype = clip_model.dtype
         self.image_encoder = clip_model.visual
@@ -240,26 +237,27 @@ class CoCoCoOp(nn.Module):
     Forward passes
     """
 
-    def get_image_features(self, image):
-        image = self.preprocess(image).unsqueeze(0).to(self.prompt_learner.device)
+    def get_image_features(self, images):
         with torch.no_grad():
-            image_features = self.image_encoder(image)
+            image_features = self.image_encoder(images)
             image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-            return image_features[0]
+            return image_features
 
-    def forward(self, image_features):
-        return self._forward(image_features, self.prompt_learner.forward)
+    def forward(self, images):
+        return self._forward(images, self.prompt_learner.forward)
 
-    def forward_meta_only(self, image_features):
-        return self._forward(image_features, self.prompt_learner.forward_meta_only)
+    def forward_meta_only(self, images):
+        return self._forward(images, self.prompt_learner.forward_meta_only)
 
-    def forward_scale_only(self, image_features):
-        return self.prompt_learner.scaling_net(image_features).squeeze(-1)
+    def forward_scale_only(self, images):
+        return self.prompt_learner.scaling_net(images)
 
     """
     PRIVATE Functions
     """
-    def _forward(self, image_features, prompt_call):
+    def _forward(self, images, prompt_call):
+
+        image_features = self.get_image_features(images)
 
         tokenized_prompts = self.prompt_learner.tokenized_prompts
        # logit_scale = self.logit_scale.exp()

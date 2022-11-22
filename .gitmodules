@@ -4,3 +4,6 @@
 [submodule "src/Submodules/torch_warmup_lr"]
 	path = src/Submodules/torch_warmup_lr
 	url = https://github.com/lehduong/torch-warmup-lr.git
+[submodule "src/Submodules/ConCLIP"]
+	path = src/Submodules/ConCLIP
+	url = https://github.com/vgthengane/Continual-CLIP
